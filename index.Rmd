@@ -1,0 +1,72 @@
+---
+title: "Predicting the Quality of a Workout"
+author: "Ben Kling"
+date: "4/15/2022"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(caret)
+```
+
+## Title goes here
+
+```{r file download and data frame initialization}
+# Download the training file
+if(!file.exists("pml-training.csv")) download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv","pml-training.csv")
+# Download the test file
+if(!file.exists("pml-testing.csv")) download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv","pml-testing.csv")
+
+# establish data frame
+training <- read_csv("pml-training.csv")
+testing <- read_csv("pml-testing.csv")
+
+```
+
+
+```{r data cleaning}
+
+# #DIV/0! values
+training <- training %>%
+    mutate(across(.fns=na_if, y="#DIV/0!"))
+
+trainingfeatures <- training %>% select(-(1:7))
+
+```
+
+
+
+```{r eda plots}
+
+g <- ggplot(training, mapping = aes(skewness_roll_belt, fill=classe, color=classe))
+g + geom_histogram()
+g + geom_histogram() + facet_wrap(~classe)
+```
+
+
+```{r data slicing}
+
+training %>%
+    group_by(classe) %>%
+    summarize(count=n()) %>%
+    arrange(desc(count))
+
+```
+
+
+```{r model selection}
+
+#naively train adaboost model
+# adamdl <- train(data=trainingfeatures, classe~., method='adaboost')
+
+```
+
+
+
+### Citation
+
+All data in this analysis was made available here: <https://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har>
