@@ -32,7 +32,8 @@ testing <- read_csv("pml-testing.csv")
 
 # #DIV/0! values
 training <- training %>%
-    mutate(across(.fns=na_if, y="#DIV/0!"))
+    mutate(across(.cols = -(1:7), .fns = as.numeric)) %>%
+    mutate(across(.cols = -(1:7), .fns = replace_na, replace=0))
 
 trainingfeatures <- training %>% select(-(1:7))
 
