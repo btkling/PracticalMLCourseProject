@@ -11,6 +11,7 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(caret)
+library(doParallel)
 ```
 
 ## Title goes here
@@ -32,8 +33,14 @@ testing <- read_csv("pml-testing.csv")
 
 # #DIV/0! values
 training <- training %>%
-    mutate(across(.cols = -(1:7), .fns = as.numeric)) %>%
-    mutate(across(.cols = -(1:7), .fns = replace_na, replace=0))
+    mutate(across(.fns=na_if, y="#DIV/0!")) %>%
+    mutate(across(.cols = -c(1:7,160), .fns = as.numeric)) %>%
+    mutate(across(.cols = -c(1:7,160), .fns = replace_na, replace=0)) %>%
+    filter(!is.na(classe)) %>%
+    mutate(classe = as.factor(classe))
+
+
+
 
 trainingfeatures <- training %>% select(-(1:7))
 
@@ -43,13 +50,13 @@ trainingfeatures <- training %>% select(-(1:7))
 
 ```{r eda plots}
 
-g <- ggplot(training, mapping = aes(skewness_roll_belt, fill=classe, color=classe))
+g <- ggplot(training, mapping = aes(max_roll_belt, fill=classe, color=classe))
 g + geom_histogram()
 g + geom_histogram() + facet_wrap(~classe)
 ```
 
 
-```{r data slicing}
+```{r eda slicing}
 
 training %>%
     group_by(classe) %>%
@@ -61,9 +68,18 @@ training %>%
 
 ```{r model selection}
 
-#naively train adaboost model
-# adamdl <- train(data=trainingfeatures, classe~., method='adaboost')
+# apply pca
+# run random forest on the reduced feature set
+# parallellize the execution
+cl <- makePSOCKcluster(5)
+registerDoParallel(cl)
 
+rfmodel <- train(classe ~.,
+                 data=trainingfeatures,
+                 method='rf',
+                 preProcess='pca')
+
+stopCluster(cl)
 ```
 
 
