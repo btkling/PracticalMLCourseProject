@@ -11,7 +11,9 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(caret)
+library(parallel)
 library(doParallel)
+library(randomForest)
 ```
 
 ## Title goes here
@@ -23,16 +25,15 @@ if(!file.exists("pml-training.csv")) download.file("https://d396qusza40orc.cloud
 if(!file.exists("pml-testing.csv")) download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv","pml-testing.csv")
 
 # establish data frame
-training <- read_csv("pml-training.csv")
-testing <- read_csv("pml-testing.csv")
+trainingraw <- read_csv("pml-training.csv")
+testingraw <- read_csv("pml-testing.csv")
 
 ```
-
 
 ```{r data cleaning}
 
 # #DIV/0! values
-training <- training %>%
+training <- trainingraw %>%
     mutate(across(.fns=na_if, y="#DIV/0!")) %>%
     mutate(across(.cols = -c(1:7,160), .fns = as.numeric)) %>%
     mutate(across(.cols = -c(1:7,160), .fns = replace_na, replace=0)) %>%
@@ -41,12 +42,24 @@ training <- training %>%
 
 
 
+# these features have no non-zero values
+allzero <- c('kurtosis_yaw_belt',
+             'skewness_yaw_belt', 
+             'amplitude_yaw_belt', 
+             'kurtosis_yaw_dumbbell', 
+             'skewness_yaw_dumbbell', 
+             'amplitude_yaw_dumbbell', 
+             'kurtosis_yaw_forearm', 
+             'skewness_yaw_forearm', 
+             'amplitude_yaw_forearm')
+
+training <- training %>%
+    select(-allzero)
+
 
 trainingfeatures <- training %>% select(-(1:7))
 
 ```
-
-
 
 ```{r eda plots}
 
@@ -55,34 +68,33 @@ g + geom_histogram()
 g + geom_histogram() + facet_wrap(~classe)
 ```
 
+```{r eda and qa slicing}
 
-```{r eda slicing}
-
-training %>%
-    group_by(classe) %>%
-    summarize(count=n()) %>%
-    arrange(desc(count))
+for (var in allzero) {
+    checkzero %>%
+        group_by(.data[[var]]) %>% 
+        summarize(ct = n()) %>%
+        head(n=12) %>%
+        print()
+}
 
 ```
-
 
 ```{r model selection}
 
 # apply pca
 # run random forest on the reduced feature set
 # parallellize the execution
-cl <- makePSOCKcluster(5)
-registerDoParallel(cl)
+cluster <- makeCluster(detectCores() - 1) # convention to leave 1 core for OS
+registerDoParallel(cluster)
 
 rfmodel <- train(classe ~.,
                  data=trainingfeatures,
-                 method='rf',
-                 preProcess='pca')
+                 method='rf')
 
-stopCluster(cl)
+stopCluster(cluster)
+registerDoSEQ()
 ```
-
-
 
 ### Citation
 
