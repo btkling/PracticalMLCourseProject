@@ -144,6 +144,25 @@ confusionMatrix.train(rfmodel)
 
 ```{r predicting test data}
 
+pred <- predict(rfmodel, 
+                test_data)
+
+confusionMatrix(test_data$classe,pred)
+
+```
+
+
+```{r predict the evaluation data1}
+
+eval_pred <- predict(rfmodel,
+                     evaluation_processed)
+
+# print predictions
+i <- 1
+for (j in eval_pred) {
+    print(paste0(i," ", j))    
+    i <- i + 1
+}
 
 
 ```
