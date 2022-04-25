@@ -34,11 +34,11 @@ testingraw <- read_csv("pml-testing.csv")
 
 # #DIV/0! values
 training <- trainingraw %>%
-    mutate(across(.fns=na_if, y="#DIV/0!")) %>%
-    mutate(across(.cols = -c(1:7,160), .fns = as.numeric)) %>%
-    mutate(across(.cols = -c(1:7,160), .fns = replace_na, replace=0)) %>%
-    filter(!is.na(classe)) %>%
-    mutate(classe = as.factor(classe))
+    mutate(across(.fns=na_if, y="#DIV/0!")) %>% # lots of "#DIV/0" errors in the data (excel output?)
+    mutate(across(.cols = -c(1:7,160), .fns = as.numeric)) %>% # Coerce to numeric
+    mutate(across(.cols = -c(1:7,160), .fns = replace_na, replace=0)) %>% # zero out the NA values
+    filter(!is.na(classe)) %>% # remove NA classe values
+    mutate(classe = as.factor(classe)) # convert classe to a factor
 
 
 
@@ -56,8 +56,8 @@ allzero <- c('kurtosis_yaw_belt',
 training <- training %>%
     select(-allzero)
 
-
-trainingfeatures <- training %>% select(-(1:7))
+# first 7 variables are not measurements, merely attributes and can be ignored
+trainingfeatures <- training %>% select(-(1:7)) 
 
 ```
 
@@ -85,16 +85,36 @@ for (var in allzero) {
 # apply pca
 # run random forest on the reduced feature set
 # parallellize the execution
+
+set.seed(1234) #set a seed for reproducibility
+
 cluster <- makeCluster(detectCores() - 1) # convention to leave 1 core for OS
 registerDoParallel(cluster)
 
+fitCtrl <- trainControl(method='cv',
+                        number=5,
+                        allowParallel=TRUE)
+
 rfmodel <- train(classe ~.,
                  data=trainingfeatures,
-                 method='rf')
+                 method='rf',
+                 trControl=fitCtrl)
 
 stopCluster(cluster)
 registerDoSEQ()
 ```
+
+
+```{r model evaluation}
+
+rfmodel 
+
+rfmodel$resample
+
+confusionMatrix.train(rfmodel)
+
+```
+
 
 ### Citation
 
