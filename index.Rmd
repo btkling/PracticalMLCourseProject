@@ -16,9 +16,36 @@ library(doParallel)
 library(randomForest)
 ```
 
-## Title goes here
+## Predicting Quality of a workout
 
-```{r file download and data frame initialization}
+In this project, we will attempt to use statistical learning to make predictions
+about the manner in which a user performed an exercise. We are given data from 
+accelerometers that take measurements from the belt, forearm, arm, and dumbbell.
+
+The goal is to accurately predict a value called "classe" given a sample of
+19,622 labelled observations.
+
+
+## Analysis
+
+### Model Selection
+Given that this is a classification problem, I have chosen to use a random 
+forest model with which to build a prediction. There are many possible models
+to choose from, but with how robust of a sample that we are given it is likely
+
+
+
+### Model Parameters
+
+Performance Notes
+
+Accuracy - in sample, out of sample
+
+Predictions against the evaluation (unlabelled) set
+
+
+
+```{r file download and data frame initialization, echo=FALSE}
 # Download the training file
 if(!file.exists("pml-training.csv")) download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv","pml-training.csv")
 # Download the test file
@@ -107,7 +134,7 @@ for (var in allzero) {
 
 ```
 
-```{r model selection}
+```{r model selection, cache=TRUE}
 
 # apply pca
 # run random forest on the reduced feature set
