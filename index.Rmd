@@ -26,26 +26,27 @@ The goal is to accurately predict a value called "classe" given a sample of
 19,622 labelled observations.
 
 
-## Analysis
+## Data input and Cleaning
+The data set requires us to do some cleaning to ensure it is ready to be 
+modeled properly. Brief outline of cleaning steps taken:
 
-### Model Selection
-Given that this is a classification problem, I have chosen to use a random 
-forest model with which to build a prediction. There are many possible models
-to choose from, but with how robust of a sample that we are given it is likely
+* Coerced all features to numeric - there were many NA values and many values
+that appear to be artifacts of storage in excel ("#DIV/0" values)
+* replaced NA values with 0 - models need to interpret all values as continuous
+and without replacing to zero these observations would be ignored.
+* removed features that have no non-zero values: 9 potential features are 
+completely absent of any observed data. These need to be removed prior to the 
+execution of the data to prevent complications during modeling
 
+In addition to cleaning the data, we will also partition the data known as the 
+"training" data into two sets:
 
+* 80% to train the model
 
-### Model Parameters
+* 20% to test the model and estimate out of sample error, prior to applying the
+model against the 20 evaluation observations
 
-Performance Notes
-
-Accuracy - in sample, out of sample
-
-Predictions against the evaluation (unlabelled) set
-
-
-
-```{r file download and data frame initialization, echo=FALSE}
+```{r file download and data frame initialization, echo=FALSE, message=FALSE, warning=FALSE}
 # Download the training file
 if(!file.exists("pml-training.csv")) download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv","pml-training.csv")
 # Download the test file
@@ -57,7 +58,7 @@ evaluationraw <- read_csv("pml-testing.csv")
 
 ```
 
-```{r data cleaning}
+```{r data cleaning, message=FALSE}
 
 # #DIV/0! values
 data <- rawdata %>%
@@ -115,14 +116,33 @@ test_data <- data_processed[-trainIndex,]
 
 ```
 
-```{r eda plots}
+
+## Analysis
+
+### Exploratory Data Analysis
+
+Prior to selecting a model, we run some exploratory data analysis to determine 
+what the structure of the data is that we are looking at as well as visualizing 
+distribution of the features across the labelled data. I've also included some
+code from QA against the data to ensure it was cleaned prioperly.
+
+```{r eda plots, message=FALSE, warning=FALSE}
 
 g <- ggplot(train_data, mapping = aes(max_roll_belt, fill=classe, color=classe))
-g + geom_histogram()
-g + geom_histogram() + facet_wrap(~classe)
+g + 
+    geom_histogram() + 
+    facet_wrap(~classe) + 
+    ggtitle("Histogram of an example feature and its distribution of values for
+            each classe")
+
+
+g <- ggplot(train_data, mapping = aes(classe, fill=classe))
+g + 
+    geom_histogram(stat="count") + 
+    ggtitle("Number of Observations for Each Classe (training slice)")
 ```
 
-```{r eda and qa slicing}
+```{r eda and qa slicing, include=FALSE}
 
 for (var in allzero) {
     rawdata %>%
@@ -133,6 +153,14 @@ for (var in allzero) {
 }
 
 ```
+
+
+### Model Selection
+Given that this is a classification problem, I have chosen to use a random 
+forest model with which to build a prediction. There are many possible models
+to choose from, but with how robust of a sample that we are given it is likely
+that many models will perform well.
+
 
 ```{r model selection, cache=TRUE}
 
@@ -158,7 +186,19 @@ stopCluster(cluster)
 registerDoSEQ()
 ```
 
+### Model Parameters & Performance
 
+In addition to selecting random forest as our model of choice, we also are 
+applying k-fold cross-validation to the result set, with 5 folds.
+
+After running the model using the "caret" package, we see that the optimal value
+for the only tuning parameter (mtry) is 72, which produces a 99.3% accuracy 
+on the training set
+
+*Accuracy - in sample, out of sample*
+Upon running the model, we see the following for accuracy:
+
+**In sample (against the training set):** 99.3% (95% CI: 90.0% - 99.5%)
 ```{r model evaluation}
 
 rfmodel 
@@ -169,6 +209,14 @@ confusionMatrix.train(rfmodel)
 
 ```
 
+
+We held out a group of the training data to estimate our out of sample accuracy
+as well, given how robust of a dataset we had. 
+
+**Out of sample Accuracy:** 99.3%
+
+
+**Confusion Matrix:**
 ```{r predicting test data}
 
 pred <- predict(rfmodel, 
@@ -178,6 +226,11 @@ confusionMatrix(test_data$classe,pred)
 
 ```
 
+
+**Predictions against the evaluation (unlabelled) set**
+
+Here we run some code to see what the model chose for predicting each of the 20
+unlabelled observations:
 
 ```{r predict the evaluation data1}
 
@@ -193,6 +246,24 @@ for (j in eval_pred) {
 
 
 ```
+
+
+*Performance Notes*
+
+Running the random forest modeling initially was very slow. In order to produce
+results quicker, we replaced bootstrap resampling (very laborious) with 
+cross-validation. In addition we used the doParallel package to allow the model
+to be trained with parallel computing. This sped up the runtime from 
+indefinitely long, to just a minute or two.
+
+
+
+
+
+
+
+
+
 
 
 
